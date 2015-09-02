@@ -1,0 +1,44 @@
+---
+title: "gtf_stats"
+output: html_document
+---
+
+```{r}
+source("~/data2/rstudio//birds/utils/gtf.R")
+
+```
+
+```{r}
+gtf = as.data.frame(fread("~/data/maker/lonStrDom1/run6/lonStrDom1.unamb.rmsk.simple.maker.output/cuffcmp.combined.sort.merge2.name.gtf"))
+gtfp = parse_gtf(gtf, ncores = 10)
+
+```
+
+```{r}
+lens = gtfp %>% group_by(gene_id) %>% summarize(lens = sum(end-start))
+lens$gene_id = str_replace(lens$gene_id, "\"", "")
+lens$gene_id = str_replace(lens$gene_id, "\"", "")
+```
+
+```{r}
+write.table(lens, file="~/data/maker/lonStrDom1/run6/lonStrDom1.unamb.rmsk.simple.maker.output/cuffcmp.combined.sort.merge2.name.lengths.txt", quote=F, sep="\t", row.names=F)
+```
+
+
+```{r}
+library("BSgenome.LStriataDom.Brainard.lonStrDom1")
+library(Biostrings)
+```
+
+```{r}
+gtf.seq = getSeq(BSgenome.LStriataDom.Brainard.lonStrDom1, gtfp$chrom, start=gtfp$start, end=gtfp$end)
+
+```
+
+
+```{r}
+gtf.seq = getSeq(BSgenome.LStriataDom.Brainard.lonStrDom1, gtfp$start, gtfp$end)
+```
+
+
+
