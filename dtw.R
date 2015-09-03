@@ -59,9 +59,9 @@ align_by_areas = function(info, groups, plot=T, ref_id=NULL) {
 
       m = df2 %>% gather(compare, id, ref:query) %>% group_by(group_id, compare, id) %>% summarize(dtw_pos = mean(ref_pos_inter))
       return(m)
-    })
+  })
     df = do.call(rbind, areas.align)
-    df = df %>% group_by(group_id)
+    df = df %>% group_by(id) %>% summarize(dtw_pos = mean(dtw_pos))
     df$ref_id = ref_id
     #return(df)
     return(list(info=areas, alignments=df))
