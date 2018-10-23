@@ -1,0 +1,120 @@
+```{r}
+library(seewave)
+library(tidyverse)
+```
+
+
+```{r}
+fname = "/mnt/bengal_home/song/rd25gr70/songs/select/output_1537836056p29.wav"
+wav = filtersong(readWave(fname))
+```
+
+```{r}
+spec = spectro(wav, ovlp = 80, plot=F, norm = T, fftw = T, dB=NULL)
+
+spec_amp = spec$amp
+spec_amp_prob = apply(spec_amp, 2, function(x) x / sum(x))
+```
+
+```{r}
+spec_amp_prob_filt = stats::filter(spec_amp_prob, dn, sides=2)
+colnames(spec_amp_prob_filt) = paste("ind", 1:ncol(spec_amp_prob_filt), sep="")
+spec_amp_prob_filt = spec_amp_prob_filt[(filt_max+1):(nrow(spec_amp_prob_filt)-filt_max),]
+print(image(t(spec_amp_prob)))
+print(image(t(spec_amp_prob_filt)))
+```
+
+```{r}
+wl2 = nrow(spec_amp_prob)
+uni = rep(1/wl2, times=wl2)
+```
+
+
+```{r}
+kls = apply(spec_amp_prob, 2, function(x) calc_kl(x, uni))
+#step_size = 10
+#filt_min = -.005 / step_size
+#filt_max = .005 / step_size
+#filt_sd = .001 / step_size
+filt_min = -10
+filt_max = 10
+filt_sd = 2
+dn = dnorm(seq(filt_min, filt_max, 1), mean = 0, sd = filt_sd)
+dn_sum = sum(dn)
+dn = dn / dn_sum
+
+kls_filt = stats::filter(kls, dn, sides=2)
+plot(density(kls, na.rm=T))
+```
+
+```{r}
+win = 100
+thresh_rol = calc_rolling_func(kls_filt, window=win, func = median_sd, factor=0)
+
+thresh_full = median(kls_filt, na.rm=T) + sd(kls_filt, na.rm=T) * .25
+```
+
+```{r}
+plot(kls_filt, type="l")
+lines(thresh_rol, col=2)
+```
+
+```{r}
+spec_amp_wave = apply(spec_amp, 2, sum)
+plot(spec_amp_wave, type="l")
+
+thresh_full = median(spec_amp_wave, na.rm=T) + sd(spec_amp_wave, na.rm=T) * .25
+abline(h = thresh_full, col=4)
+```
+
+```{r}
+thresh = .05
+inds = kls_filt>thresh_rol & spec_amp_wave>thresh_full
+peaks = spec$time[inds]
+peaks = data.frame(peaks, peaks, labels = "-")
+```
+
+```{r}
+plot(wav, xlim=c(3,4))
+plot_peaks(peaks, -1500, col=2)
+
+plot(wav, xlim=c(6,7))
+plot_peaks(peaks, -1500, col=2)
+
+plot(wav)
+plot_peaks(peaks, -1500, col=2)
+```
+
+```{r}
+plot_spectro(wav)
+```
+
+
+## Rolling kl
+```{r}
+dat = spec_amp_prob
+#out = vector("numeric", ncol(dat))
+out = as.numeric(rep(NA, times=ncol(dat)))
+window = 25
+min_ind = ceiling(window/2)
+max_ind = length(out) - (min_ind - 1)
+span = min_ind - 1
+
+for (i in min_ind:max_ind) {
+  A = dat[,(i - span):i]
+  B = dat[,(i+1):(i+span)]
+  #A = dat[,(i-span):(i+span-2)]
+  #B = dat[,(i-1):i]
+  Amean = rowMeans(A)
+  Bmean = rowMeans(B)
+  out[i] = calc_kl(Amean, Bmean)
+}
+```
+
+```{r}
+plot(density(out, na.rm=T))
+plot(out, type="l", xlim=c(1500,1800))
+lines(kls_filt, col=2, xlim=c(1500,1800))
+```
+
+

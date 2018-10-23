@@ -1,0 +1,72 @@
+
+```{r}
+library(stringdist)
+library(igraph)
+library(tidyverse)
+source("~/data2/rstudio/birds/utils/db.R")
+```
+
+## Prep seq data
+```{r}
+db_name = "deaf1/deaf1_ncbi_apollo.db"
+db_seq = 1
+db = src_sqlite("~/data/umi_db/deaf1/deaf1_ncbi_apollo.db")
+data = load_umi_db(db_name, db_seq, table_name = "counts", collect=F)
+#data = data %>% group_by(i5, i7, bc, gene_id)
+```
+
+```{r}
+barcode = 2
+index = 701
+gene = "NEFM"
+data1 = data %>% filter(bc == barcode, i7== index, gene_id == gene) %>% collect()
+umis = data1$umi
+counts = data1$count
+```
+
+
+```{r}
+index = 701
+gene_id = "NEFM"
+data1 = data %>% filter(i7== index, gene_id == gene) %>% collect()
+```
+
+
+```{r}
+gene_id = "NEFM"
+data1 = data %>% filter(gene_id == gene) %>% collect()
+```
+
+```{r}
+data1 = data %>% collect(n=Inf)
+```
+
+
+```{r warning=FALSE}
+system.time({
+data2 = data %>% 
+  filter(bc > 0) %>% 
+ #filter(bc==2, i7==707) %>% 
+  group_by(bc, i7) %>% 
+  collect(n=Inf) %>% 
+  filter(!grepl("NNNN", umi)) %>% 
+  do(collapse_umis(.)) %>% 
+  do({
+    #print(.$bc[1])
+    #print(.$i7[1])
+    get_umi_groups(.$umi, 1, .$count)
+    })
+})
+```
+
+
+```{r}
+data2 = foreach(bc1 = unique(data$bc))
+```
+
+```{r}
+bcs = data %>% select(bc) %>% distinct()
+```
+
+
+

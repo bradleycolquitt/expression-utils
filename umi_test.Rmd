@@ -1,0 +1,36 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(stringdist)
+```
+
+```{r}
+db = src_sqlite("~/data/umi_db/ra_dv_lonStrDom1_3utr_test_nomerge.db")
+counts = tbl(db, "counts")
+counts1 = collect(counts %>% filter(gene_id=="PVALB"))
+```
+
+```{r}
+counts11 = counts1 %>% filter(i7==701, bc==1)
+```
+
+```{r}
+d = as.matrix(stringdistmatrix(counts11$umi, method = "lv", useNames=T))
+```
+
+```{r}
+dists = counts1 %>% filter(i7==701) %>% group_by(i7,bc) %>% do({
+  d = stringdistmatrix(.$umi, method="lv", useNames = T, nthread = 10)
+  dm = melt(as.matrix(d))
+  dm
+})
+```
+
+```{r}
+ggplot(dists, aes(value)) + geom_density() + facet_wrap(~bc)
+```
+

@@ -1,0 +1,71 @@
+---
+title: "db"
+output: html_document
+---
+
+```{r}
+library(googlesheets)
+library(dplyr)
+```
+
+```{r}
+mdb = src_mysql("sample_db")
+gdb = gs_title("test_samples")
+```
+
+```{r}
+seq = collect(tbl(mdb, "sequencing"))
+```
+
+```{r}
+gs_ws_new(gdb, "sequencing", input=seq)
+```
+
+```{r}
+gdb = gs_title("test_samples")
+seq1 = gdb %>% gs_read("sequencing")
+```
+
+```{r}
+if (db_has_table(db$con, "test"))
+  db_drop_table(db$con, "test")
+copy_to(mdb, seq1, name="test", temporary=F, field.names=list(idseqeuncing=int))
+```
+
+```{r}
+q = paste(scan("~/data2/rstudio/birds/sql/test.sql", what=character(), sep = ), collapse=" ")
+a = dbSendQuery(mdb$con, q)
+b = dbFetch(a)
+```
+
+```{r}
+b = collect(tbl(mdb, "test"))
+```
+
+```{r}
+test_insert1 = b[1,]
+test_insert1$idsequencing = max(b$idsequencing) + 1
+test_insert = rbind(b[1:10,], test_insert1)
+db_insert_into(mdb$con, "test", test_insert, field.names=list(date="date"))
+```
+
+```{r}
+gs_ws_new(gdb, "test", )
+```
+
+
+```{r}
+gdb = gs_title("dv_samples")
+```
+
+```{r}
+update_mysql_from_google("test_samples", "test")
+```
+
+
+
+
+
+
+
+

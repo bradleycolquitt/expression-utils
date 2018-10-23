@@ -1,4 +1,39 @@
 library(XML)
+library(googlesheets)
+
+# sleep_time is kludge to get around 429 too many requests error
+load_lcm_sample_info = function(ssname, sleep_time=1) {
+  gdb = gs_title(ssname)
+  lcm = gdb %>% gs_read("lcm")
+  Sys.sleep(sleep_time)
+  positions = gdb %>% gs_read("positions")
+  Sys.sleep(sleep_time)
+  orient = gdb %>% gs_read("orientation")
+  Sys.sleep(sleep_time)
+  i7 = gdb %>% gs_read("i7")
+  Sys.sleep(sleep_time)
+  ind = grep("division.id", colnames(i7))
+  val = unique(i7[,grep("division$", colnames(i7))])
+  colnames(i7)[ind] = paste("lib", val, sep=".")
+  bc = gdb %>% gs_read("bc")
+  Sys.sleep(sleep_time)
+  prep = gdb %>% gs_read("prep")
+  Sys.sleep(sleep_time)
+
+  info = inner_join(lcm, positions)
+  info = inner_join(info, orient)
+  info = inner_join(info, prep)
+  info = inner_join(info, bc)
+  info = inner_join(info, i7)
+  info$i7 = factor(info$i7)
+  info$bc = factor(info$bc)
+  info$lib.column = factor(info$lib.column)
+  info$id = 1:nrow(info)
+  rm(gdb)
+  return(info)
+}
+
+
 cleanGoogleTable <- function(dat, table=1, skip=0, ncols=NA, nrows=-1, header=TRUE, dropFirstCol=NA){
   if(!is.data.frame(dat)){
     dat <- dat[[table]]
