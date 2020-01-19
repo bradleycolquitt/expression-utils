@@ -54,24 +54,62 @@ parse_gtf = function(gtf, ncores=6, adjust=TRUE) {
 
 write_parsed_gtf = function(gtf, fname, character_cols=NULL, cols_order=NULL) {
   gtf = as.data.frame(gtf)
-  cnames = colnames(gtf)[9:ncol(gtf)]
+  cnames = colnames(gtf)[10:ncol(gtf)]
   cnames_l = length(cnames)
-  if (is.null(character_cols)) character_cols = 1:cnames_l
-  
+  if (is.null(character_cols)) character_cols = cnames
   if (is.null(cols_order)) cols_order = 1:(ncol(gtf)-8)
-  gtf[,9:ncol(gtf)] = gtf[, 8+cols_order]
   
-  id = apply(gtf, 1, function(d) {
-    tmp = sapply(1:cnames_l, function(x) {
-      if (x %in% character_cols) {
-        paste(cnames[x], " \"", d[x+8], "\"", sep="")
-      } else {
-        paste(cnames[x], d[x+8], sep=" ") 
-      }
-    })
-    paste(tmp, collapse="; ")
-    })
-  write.table(cbind(gtf[,1:8], id), file=fname, quote=F, sep="\t", row.names=F, col.names=F)
+  gtf[,9:ncol(gtf)] = gtf[, 8+cols_order]
+  # 
+  # id = apply(gtf, 1, function(d) {
+  #   tmp = sapply(1:cnames_l, function(x) {
+  #     if (x %in% character_cols) {
+  #       paste(cnames[x], " \"", d[x+8], "\"", sep="")
+  #     } else {
+  #       paste(cnames[x], d[x+8], sep=" ") 
+  #     }
+  #   })
+  #   paste(tmp, collapse="; ")
+  #   })
+  # 
+  format_with_quotes = function(x, xname) {
+    paste(xname, " \"", x, "\"", sep="")
+  }
+  
+  format_without_quotes = function(x, xname) {
+    paste(xname, x, sep=" ") 
+  }
+  
+  paste_cols = function(dat, vars) {
+    .vars <- rlang::syms(vars)
+    
+    result <-  paste(!!!.vars, collapse = "; " )
+    return(result)
+  }
+  for (cc in cnames) {
+    if (cc %in% character_cols) {
+    gtf = gtf %>% mutate_at(vars(cc), format_with_quotes, xname = cc)
+    } else {
+      gtf = gtf %>% mutate_at(vars(cc), format_without_quotes, xname = cc)
+    }
+  }
+  
+  .vars = rlang::syms(cnames)
+  
+  gtf = gtf %>%
+    mutate(attribs = paste(!!!.vars, sep="; ")) %>%
+    select(-one_of(cnames))
+
+  # gtf = gtf %>% mutate_at(vars(character_cols))
+  #   do({
+  #   
+  #   if (x %in% character_cols) {
+  #     paste(cnames[x], " \"", d[x+8], "\"", sep="")
+  #   } else {
+  #     paste(cnames[x], d[x+8], sep=" ") 
+  #   }
+  # })
+  write.table(gtf, file=fname, quote=F, sep="\t", row.names=F, col.names=F)
 }
 
 parse_gff = function(gff) {

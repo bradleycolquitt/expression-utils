@@ -12,6 +12,7 @@ library(stringr)
 library(gridExtra)
 library(lazyeval)
 library(rlang)
+library(car)
 
 filter_by_var = function(dat, thresh) {
   gene_var = apply(dat, 1, var)

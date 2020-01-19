@@ -66,6 +66,19 @@ sem_na = function(x) {
   sd(x)/length(x)
 }
 
+#' https://en.wikipedia.org/wiki/Weighted_arithmetic_mean
+#' bootstrap validation 
+weighted_sem = function(x, w) {
+  na_ind = is.na(x)
+  x = x[!na_ind]
+  w = w[!na_ind]
+  w1 = (w - min(w)) / (max(w) - min(w))
+  ws = sum(w1)
+  n = length(x)
+  std_var = (n / ((n-1) * ws^2)) * sum(w1^2 * (x - mean(x))^2)
+  sqrt(std_var)
+}
+
 var_na = function(x) {
   x = x[is.finite(x)]
   var(x, na.rm=T)
@@ -129,6 +142,18 @@ tissue_specificity = function(x, scale=F) {
   sum(x_norm * log(x_norm / mean(x)))
 }
 
+calc_gene_specificity = function(x, scale=F) {
+  if (scale)
+    x = (x - (min(x))) / (max(x) - (min(x)))
+  #x = x[x>0]
+  x_norm = x /sum(x)
+  x_norm * log(x_norm / mean(x))
+}
+
+# calc_tau = function(x) {
+#   x_hat = x / max(x)
+#   tau = 
+# }
 
 
 
