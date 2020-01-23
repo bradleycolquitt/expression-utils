@@ -2,6 +2,7 @@
 library(future)
 #library(geiger)
 library(qs)
+
 #plan(sequential)
 
 #theme_set(theme_cowplot())
@@ -226,6 +227,29 @@ calc_pca_dist = function(obj, dims) {
   return(as.matrix(data.dist))
 }
 
+combine_gene_fragments = function(obj_orig, features_to_transfer=NULL ) {
+  require(Matrix.utils)
+  dat = GetAssayData(obj_orig, assay = "RNA", slot="counts")
+  rnames = rownames(dat)
+  groups = sub("\\.[0-9]+$", "", rnames)
+  groups = sub("\\-[0-9]+$", "", groups)
+  dat1 = aggregate.Matrix(dat, groups, fun="sum" )
+  rnames = rownames(dat1)
+  rnames_to_include = which(rnames!="NA")
+  dat1 = dat1[rnames_to_include,]
+  
+  obj = CreateSeuratObject(dat1)
+  
+  
+  if (!is.null(features_to_transfer)) {
+    features_to_transfer = c(features_to_transfer, "percent.mito")
+  } else {
+    features_to_transfer = "percent.mito"
+  }
+  obj = AddMetaData(obj, FetchData(obj_orig, features_to_transfer))
+  return(obj)
+}
+
 merge_idents = function(obj, cluster_column, tree_dims=1:20, de_thresh, cluster_size_min = 30, comparison="neighbors", n_neighbors=2, niter=10, mt_genes=NULL) {
   DefaultAssay(obj) = "SCT"
   Idents(obj) = FetchData(obj, cluster_column)
@@ -325,12 +349,12 @@ seurat_jackstraw = function(obj) {
   obj
 }
 
-seurat_find_clusters = function(obj, ress, cluster_prefix, dims.use=NULL, algorithm=4) {
+seurat_find_clusters = function(obj, ress, cluster_prefix, dims.use=NULL, algorithm=4, reduction ="pca") {
   if (is.null(dims.use)) {
     dims.use = extract_dims_use(obj)
   }
   
-  obj = FindNeighbors(obj, dims = dims.use)
+  obj = FindNeighbors(obj, dims = dims.use, reduction=reduction )
   for (res in ress) {
     print(res)
     obj = FindClusters(object = obj,
@@ -341,14 +365,16 @@ seurat_find_clusters = function(obj, ress, cluster_prefix, dims.use=NULL, algori
   }
   obj
 }
-seurat_find_cluster_batch = function(obj, dims.use_list, cluster_prefix) {
+seurat_find_cluster_batch = function(obj, dims.use_list, ress=seq(.1, .6, .1), cluster_prefix, reduction="pca") {
   for (i in seq_along(dims.use_list)) {
     du = dims.use_list[[i]]
     na = names(dims.use_list)[i]
-    obj = seurat_find_clusters(obj, ress=seq(.1, .6, .1),
+    obj = seurat_find_clusters(obj, 
                                dims.use = du,
+                               ress=ress,
                                cluster_prefix = sprintf("%s_dim%s", cluster_prefix, na), 
-                               algorithm = 2)
+                               algorithm = 2,
+                               reduction = reduction)
   }
   obj
 }
