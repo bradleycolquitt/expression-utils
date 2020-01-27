@@ -1,3 +1,5 @@
+source("~/src/songanalysis/song_util.R")
+
 library(googlesheets)
 filter = dplyr::filter
 
@@ -9,7 +11,8 @@ load_song_info = function(bird_name,  dates, data_dir="/mnt/bengal_home/song", s
   infos = lapply(wdirs, function(w) {
   #  x = 1
     print(w)
-    infos= load_mat_info(wdirs, file_ex = file_ex, batch_file=batch_file)
+   #batch_file = file.path(w, batch_file)
+    infos= load_mat_info(w, file_ex = file_ex, batch_file=batch_file)
 #   infos= list(load_mat_info(wdirs[[1]], file_ex = file_ex, batch_file=batch_file))
   })
 
@@ -88,6 +91,84 @@ load_song_info = function(bird_name,  dates, data_dir="/mnt/bengal_home/song", s
   }
 
 
+  return(info)
+}
+
+load_song_info_evtaf = function(bird_name,  dates, data_dir="/mnt/bengal_home/song", subdir="songs", batch_file=NULL,  tz="PST", evtaf_log=NULL, file_ex="cbin.not.mat") {
+  wdirs = sapply(dates, function(x) {
+    paste(data_dir, bird_name, x, subdir, sep="/")
+  })
+  x  = 1
+  infos = lapply(wdirs, function(w) {
+    #  x = 1
+    print(w)
+    #batch_file = file.path(w, batch_file)
+    infos= load_mat_info(w, file_ex = file_ex, batch_file=batch_file)
+    #   infos= list(load_mat_info(wdirs[[1]], file_ex = file_ex, batch_file=batch_file))
+  })
+  
+  info = bind_rows(infos)
+  info$bird = bird_name
+  
+  ## Force timezone
+  info = info %>% mutate(mtime = as.POSIXct(mtime, tz=tz),
+                         date = as.Date(date))
+  ## Parse time info --------------------------------------------------------------------------------
+  if (file_ex == "wav.not.mat") {
+    info$parsed_time_epoch = parse_fname_for_timestamp(info$wav)
+    info$parsed_time = as.POSIXct(parse_timestamp(info$wav), tz = tz)
+  } else if (file_ex == "cbin\\.not\\.mat") {
+    info$parsed_time = as.POSIXct(parse_timestamp_cbin(info$wav, prefix = sprintf("%s_", bird_name)))
+  }
+  
+  info = info %>% mutate(time_h = as.numeric(time_h))
+  info$date_noon = paste(info$date, "12:00:00", sep=" ")
+  info$date_noon = parse_date_time(info$date_noon, orders="ymd hms", tz = tz)
+  info$mtime_hour = floor_date(info$mtime, unit="hour")
+  
+  
+  
+  # if (nrow(dial_log)==0) {
+  #   info$drug_time = NA
+  # } else {
+  #   
+  #   
+  #   info$drug_start = as.POSIXct(cut(info$mtime, breaks=c(dial_log$drug_start, now()), right = T, include.lowest=F))
+  #   #info$drug_time_stop = as.POSIXct(cut(info$mtime, breaks=c(dial_log$drug_time_stop, now()), right = T, include.lowest=F))
+  #   info = left_join(info, dial_log, by=c("drug_start"))
+  #   info = info %>% mutate(log.drug = ifelse(is.na(log.drug), "none", log.drug))
+  #   
+  #   
+  #   # info1 = info %>% mutate(dummy=TRUE) %>%
+  #   #   left_join(dial_log %>% mutate(dummy=TRUE)) %>%
+  #   #   filter(parsed_time >= datetime_start, parsed_time <= datetime_stop) %>% select(-dummy)
+  #   # 
+  #   # info2 = info %>% anti_join(info1, by="mat_base")
+  #   # info = bind_rows(info1, info2)
+  #   # info = info %>% mutate(log.drug = ifelse(is.na(log.drug), "none", log.drug))
+  #   
+  # }
+  # 
+  # info = info %>% left_join(surgery_log)
+  
+  # To make compatible across machines
+  info = info %>% mutate(mat_base = basename(mat))
+  
+  if (!is.null(evtaf_log)) {
+
+    info1 = info %>% mutate(dummy=TRUE) %>%
+      left_join(evtaf_log %>% mutate(dummy=TRUE) %>% select(-labels)) %>%
+      filter(parsed_time >= datetime_start, parsed_time <= datetime_stop) %>% select(-dummy)
+    
+    info2 = info %>% anti_join(info1, by="mat_base")
+    info = bind_rows(info1, info2)
+    
+    #info$evtaf_time = as.POSIXct(cut(info$mtime, breaks=c(evtaf_log$_time, now()), right = T, include.lowest=F))
+    #info = left_join(info, dial_log, by="drug_time")
+    #info = info %>% mutate(log.drug = ifelse(is.na(log.drug), "none", log.drug))
+  }
+  
+  
   return(info)
 }
 
@@ -178,7 +259,7 @@ load_song_info_event = function(bird_name,dates, data_dir="/mnt/bengal_home/song
   info = info %>% mutate(mtime = as.POSIXct(mtime, tz=tz))
   
   ## Parse time info --------------------------------------------------------------------------------
-  if (file_ex == "wav.not.mat") {
+  if (file_ex == "wav.not.mat" | file_ex == "wav$") {
     info$parsed_time_epoch = parse_fname_for_timestamp(info$wav)
     info$parsed_time = as.POSIXct(parse_timestamp(info$wav), tz = tz)
   } else if (file_ex == "cbin.not.mat") {
@@ -348,7 +429,7 @@ load_evtaf_gs = function(bird_name) {
 
   #}
   
-  lg = lg %>% mutate(ff.threshold = ff.threshold / 1000)
+  lg = lg %>% mutate(ff.threshold = ifelse(ff.threshold > 0, ff.threshold / 1000, ff.threshold))
   return(lg)
 }
 

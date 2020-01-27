@@ -3,7 +3,12 @@ library(topGO)
 library(GO.db)
 library(org.Hs.eg.db)
 
+select = dplyr::select
+rename = dplyr::rename
+filter = dplyr::filter
+
 entrez_host = "jul2015.archive.ensembl.org"
+#entrez_host = "www.ensembl.org"
 bm = "ENSEMBL_MART_ENSEMBL"
 
 get_ensembl = function(ds = "hsapiens_gene_ensembl") {
@@ -11,11 +16,13 @@ get_ensembl = function(ds = "hsapiens_gene_ensembl") {
 }
 
 get_entrez_gene_id = function(ds = "hsapiens_gene_ensembl") {
-  ensembl = useMart(biomart=bm, dataset=ds, host=entrez_host)
+  ensembl = useMart(biomart=bm, dataset=ds,  host=entrez_host)
   getBM(c('entrezgene','hgnc_symbol'), mart=ensembl)
 }
 
-entrez_gene_id = get_entrez_gene_id()
+#entrez_gene_id = get_entrez_gene_id()
+
+entrez_gene_id = na.omit(get_entrez_gene_id())
 
 #' Return associated GO terms using topGO package
 #'
@@ -36,9 +43,9 @@ get_go_results = function(data_list, value_name, thresh=0.1) {
     if (nrow(tmp)==0)
       return(NULL)
     genelist = tmp[, value_name]
-    print(head(genelist))
+
     names(genelist) = entrez_gene_id[match(tmp$gene_id, entrez_gene_id[,2]), 1]
-    
+    print(head(genelist))
     selectTop = function(d, th=thresh) {
       return(d<th)
     }
@@ -93,7 +100,7 @@ get_go_results_single = function(data, value_name, thresh=0.1, outdir=NULL) {
     go_bp = new("topGOdata",
                 description = "", ontology = go,
                 allGenes = genelist , geneSel = selectTop,
-                nodeSize = 10,
+                nodeSize = 15,
                 annot = annFUN.org, mapping="org.Hs.eg.db", ID="entrez")
     resultFisher = runTest(go_bp, algorithm = "classic", statistic = "fisher")
     resultKS = runTest(go_bp, algorithm = "classic", statistic = "ks")
@@ -169,9 +176,6 @@ get_go_results2 = function(gene_subset, gene_full) {
   #gos1 
 }
 
-ensembl = useMart(biomart='ENSEMBL_MART_ENSEMBL',
-                 dataset='hsapiens_gene_ensembl',
-                 host = "jul2015.archive.ensembl.org")
 
 gene_symbol_to_entrez = function(ids, na_rm=T) {
   if (na_rm) {
@@ -212,9 +216,42 @@ process_gene_ids = function(ids) {
   g = unique(g)
   return(g)
 }
-get_david_funcchart = function(david, test_list) {
-  
+
+get_tf_genes = function() {
+  ensembl = get_ensembl()
+  entry = getBM(c('entrezgene','external_gene_name'), filters='go_id', values=c("GO:0003700", "GO:0003702", "GO:0003709", "GO:0016563", "GO:0016564"), mart=ensembl)
+  entry = entry %>% mutate(external_gene_name = toupper(external_gene_name))
+  entry
 }
+
+## List from https://www.sciencedirect.com/science/article/pii/S0092867418301065?via%3Dihub#app2, Lambert, Cell, 2018
+get_tf_genes_human = function() {
+  dat = read_csv("~/data/gene_lists/lambert_tfs/tfs.csv")
+  colnames(dat) = c("ensembl_id", "external_gene_name", "DBD")
+  dat
+}
+get_axon_guidance_genes = function() {
+  ensembl = get_ensembl()
+  entry = getBM(c('entrezgene','external_gene_name'), filters='go_id', values='GO:0007411', mart=ensembl)
+  entry = entry %>% mutate(external_gene_name = toupper(external_gene_name))
+  entry
+}
+
+get_voltage_gated_ion_channels_genes = function() {
+  ensembl = get_ensembl()
+  entry = getBM(c('entrezgene','external_gene_name'), filters='go_id', values='GO:0005216', mart=ensembl)
+  entry = entry %>% mutate(external_gene_name = toupper(external_gene_name))
+  entry
+}
+
+
+get_axon_guidance_genes_kegg = function() {
+  ensembl = get_ensembl()
+  entry = getBM(c('entrezgene','external_gene_name'), filters='go_id', values='GO:0007411', mart=ensembl)
+  entry = entry %>% mutate(external_gene_name = toupper(external_gene_name))
+  entry
+}
+
 
 gene_lists_df = data.frame(short_label = c("ribosome", 
                                            "microglia",
