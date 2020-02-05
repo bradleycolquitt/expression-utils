@@ -2,13 +2,7 @@
 library(future)
 #library(geiger)
 library(qs)
-<<<<<<< HEAD
-=======
 
->>>>>>> a2233aad207b69bece132eedeba950eff906f74c
-#plan(sequential)
-
-#theme_set(theme_cowplot())
 #exc_levels = c("Exc_NECTIN3", "Exc_BDNF", "Exc_C1QTNF4", "Exc_GRIA4", "Exc_IEG", "Exc_TAC1", "Exc_CDH9", "Exc_PLCB1", "Exc_CALM2", "Exc_NR4A2", "Exc_NPTXR", "Exc_NDNF")
 #exc_levels = c("Exc_CDH9", "Exc_PLCB1", "Exc_MAT2B", "Exc_NECTIN3", "Exc_BDNF", "Exc_KCNK1", "Exc_IEG", "Exc_TAC1", "Exc_NPTN", "Exc_NEUROD6", "Exc_CALM2",  "Exc_PVALB", "Exc_VAMP2",  "Exc_NR4A2", "Exc_NPTXR", "Exc_ITM2B", "Exc_REST")
 
@@ -240,7 +234,8 @@ combine_gene_fragments = function(obj_orig, features_to_transfer=NULL ) {
   if (!is.null(features_to_transfer)) {
     features_to_transfer = c(features_to_transfer, "percent.mito")
   } else {
-    features_to_transfer = "percent.mito"
+    features_to_transfer = colnames(obj_orig@meta.data)
+
   }
   obj = AddMetaData(obj, FetchData(obj_orig, features_to_transfer))
   return(obj)
